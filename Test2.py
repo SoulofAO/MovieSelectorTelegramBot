@@ -32,6 +32,7 @@ response = requests.get(url, params=params)
 # Проверка ответа
 if response.status_code == 200:
     movies = response.json().get("results", [])
+    print(len(movies))
     for movie in movies:
         print(f"Title: {movie['title']}, Rating: {movie['vote_average']}, Release Date: {movie['release_date']}")
 else:

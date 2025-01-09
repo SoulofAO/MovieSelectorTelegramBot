@@ -2,7 +2,7 @@ import requests
 
 api_key = "91ff54962f942374432143809e1da2ad"
 
-def get_movies_by_genre_vote_average_and_release_date(genre_id, vote_average_min, vote_average_max, release_date_start, release_date_end):
+def get_movies_by_genre_vote_average_and_release_date(genre_id, vote_average_min, vote_average_max, release_date_start, release_date_end, page):
     url = "https://api.themoviedb.org/3/discover/movie"
 
     params = {
@@ -14,21 +14,22 @@ def get_movies_by_genre_vote_average_and_release_date(genre_id, vote_average_min
         "vote_average.lte": vote_average_max,
         "primary_release_date.gte": release_date_start,
         "primary_release_date.lte": release_date_end,
-        "page": 1  # Номер страницы (для пагинации)
+        "page":  page  # Номер страницы (для пагинации)
     }
 
     response = requests.get(url, params=params)
 
-    answer = []
+    movies_on_page = []
 
     if response.status_code == 200:
+        total_results_count = response.json().get("total_results", 0)
         movies = response.json().get("results", [])
         for movie in movies:
-            answer.append({'title':movie['title'], 'vote_average':movie['vote_average'],'release_date': movie['release_date']})
+            movies_on_page.append({'title':movie['title'], 'vote_average':movie['vote_average'],'release_date': movie['release_date']})
     else:
         print(f"Ошибка: {response.status_code}, {response.text}")
 
-    return answer
+    return {"total_results_count": total_results_count, "movies_on_page": movies_on_page}
 
 def get_all_genre_id():
     url = f"https://api.themoviedb.org/3/genre/movie/list"

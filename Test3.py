@@ -1,81 +1,43 @@
-from datetime import datetime
+import requests
 
-def parse_date_range(data: str) -> dict:
-    """
-    Преобразует строку формата [range:YYYY-MM-DD:YYYY-MM-DD] или [range:YYYY:YYYY]
-    или подобные варианты в даты начала и конца в формате 'YYYY-MM-DD'.
+# Ваш API-ключ TMDb
+api_key = "91ff54962f942374432143809e1da2ad"
 
-    :param data: строка вида [range:2000-01-01:2022-12-31] или частично заполненная, например, [range:2000:2022]
-    :return: словарь с ключами 'release_date_start' и 'release_date_end'
-    """
-    # Убираем "range:" и разбиваем строку
-    try:
-        date_part = data.split(":", 1)[1]  # Оставляем только часть после "range:"
-        date_ranges = date_part.split("-")
-    except IndexError:
-        raise ValueError("Некорректный формат данных: ожидается строка вида '[range:YYYY-MM-DD:YYYY-MM-DD]'")
+# Параметры фильтрации
+genre_id = 28  # Например, 28 — это жанр "Action"
+vote_average_min = 7.0  # Минимальный рейтинг
+vote_average_max = 9.0  # Максимальный рейтинг
+release_date_start = "2020-01-01"  # Начало периода выпуска
+release_date_end = "2022-12-31"  # Конец периода выпуска
 
-    # Обработка отдельных частей
-    date_start, date_end = None, None
-    if len(date_ranges) == 1:
-        # Если указана только одна дата
-        date_start = parse_partial_date(date_ranges[0])
-    elif len(date_ranges) == 2:
-        # Если указаны начало и конец
-        date_start = parse_partial_date(date_ranges[0])
-        date_end = parse_partial_date(date_ranges[1])
-    else:
-        raise ValueError("Некорректный формат диапазона: больше двух частей в дате.")
+# URL для запроса
+url = "https://api.themoviedb.org/3/discover/movie"
 
-    # Подстановка значений по умолчанию
-    if date_start is None:
-        date_start = "1900-01-01"  # Если не указан старт, берем максимально раннюю дату
-    if date_end is None:
-        date_end = datetime.now().strftime("%Y-%m-%d")  # Если не указан конец, берем текущую дату
+# Параметры запроса
+params = {
+    "api_key": api_key,
+    "language": "en-US",
+    "sort_by": "popularity.desc",  # Сортировка по популярности
+    "with_genres": genre_id,
+    "vote_average.gte": vote_average_min,
+    "vote_average.lte": vote_average_max,
+    "primary_release_date.gte": release_date_start,
+    "primary_release_date.lte": release_date_end,
+    "page": 1  # Номер страницы (для пагинации)
+}
 
-    return {
-        "release_date_start": date_start,
-        "release_date_end": date_end
-    }
+# Выполнение запроса
+response = requests.get(url, params=params)
 
+# Проверка ответа
+if response.status_code == 200:
+    data = response.json()
+    total_results = data.get("total_results", 0)  # Общее количество фильмов
+    movies = data.get("results", [])
 
-def parse_partial_date(partial_date: str) -> str:
-    """
-    Преобразует частично указанную дату в формат 'YYYY-MM-DD'.
-    Если год/месяц/день отсутствует, подставляет значения по умолчанию.
-    :param partial_date: строка с частичной датой, например, '2000', '2000-05', '2000.11.01'
-    :return: дата в формате 'YYYY-MM-DD'
-    """
-    # Заменяем точки на дефисы
-    partial_date = partial_date.replace(".", "-").strip()
+    print(f"Total Movies Found: {total_results}")  # Выводим общее количество фильмов
 
-    # Попробуем разобрать строку
-    try:
-        if "-" in partial_date:
-            date_parts = partial_date.split("-")
-        else:
-            date_parts = [partial_date]
-
-        # Подстановка недостающих частей
-        year = date_parts[0] if len(date_parts) > 0 else "1900"
-        month = date_parts[1] if len(date_parts) > 1 else "01"
-        day = date_parts[2] if len(date_parts) > 2 else "01"
-
-        # Формируем дату
-        return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
-    except ValueError:
-        raise ValueError(f"Не удалось распознать дату: {partial_date}")
-
-
-# Пример использования
-data = "[range:2000.11.01-2022]"
-print(parse_date_range(data))
-# {'release_date_start': '2000-11-01', 'release_date_end': '2022-01-01'}
-
-data = "[range:2000-2022]"
-print(parse_date_range(data))
-# {'release_date_start': '2000-01-01', 'release_date_end': '2022-01-01'}
-
-data = "[range:2022]"
-print(parse_date_range(data))
-# {'release_date_start': '2022-01-01', 'release_date_end': '2022-01-01'}
+    for movie in movies:
+        print(f"Title: {movie['title']}, Rating: {movie['vote_average']}, Release Date: {movie['release_date']}")
+else:
+    print(f"Ошибка: {response.status_code}, {response.text}")
